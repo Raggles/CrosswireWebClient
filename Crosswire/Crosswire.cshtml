@@ -1,0 +1,158 @@
+@using System.Configuration;
+@{
+    var db = Database.OpenConnectionString(ConfigurationManager.ConnectionStrings["CrosswireConnection"].ConnectionString, "MySql.Data.MySqlClient");
+    var selectQueryString = "SELECT ch.CallHistoryID, ch.AudioStartTime, ar.Duration, ch.Caller, iface.Name, ar.Filename FROM callhistory ch JOIN audiorecording ar ON ch.AudioRecordingID = ar.audioRecordingID JOIN interface iface ON ch.InterfaceID=iface.interfaceID ORDER BY ch.DT DESC LIMIT 100;";
+    var highestID = 0;
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Crosswire Web Client</title>
+    <style>
+        * {
+            font-family: Verdana;
+        }
+        table, th, td {
+            border: solid 1px #bbbbbb;
+            border-collapse: collapse;
+            padding: 2px;
+        }
+        tbody tr:nth-of-type(odd) {
+            background-color:#eaf1f7;
+        }
+        h1 {
+            font-family: Verdana;
+            color: #404142;
+        }
+        .good {
+            color: darkgreen;
+        }
+        .bad {
+            color: darkred;
+        }
+        thead tr {
+            background: lightblue;
+        }
+        
+        
+</style>
+    </style>
+    <script src="~/Scripts/jquery-3.3.1.min.js"></script>
+    <script>
+        var highestID = 0;
+        var audioQueue = new Array();
+        var audioPlaying = false;
+
+        function refreshChanged() {
+            if ($('#autorefresh').prop('checked')) {
+                doRefresh();
+            }
+        }
+
+        function playAudio(originalPlayer) {
+            if (originalPlayer != null)
+                originalPlayer.srcElement.removeEventListener("ended", playAudio);
+            if (audioQueue.length == 0) {
+                audioPlaying = false;
+                return;
+            }
+            var i = audioQueue.shift();
+            var player = $('#' + i)[0];
+            player.addEventListener("ended", playAudio);
+            player.play();
+            audioPlaying = true;
+        }
+
+        function doRefresh() {
+            $.ajax({
+                url: "cwFetch.cshtml",
+                type: "get",
+                data: {
+                    fromID: highestID,
+                },
+                success: function (response) {
+                    var result = "";
+                    var audioStack = new Array();
+                    $.each(response, function (i, item) {
+                        result = result + ($('<tr>').append(
+                            $('<td>').text(item.time),
+                            $('<td>').text(item.length),
+                            $('<td>').text(item.caller),
+                            $('<td>').text(item.channel),
+                            $('<td>').append($('<audio>', { id: "au" + item.id, controls:true }).append($('<source>', { src: item.file, type: "audio/wav" })))
+                        ))[0].outerHTML;
+                        if (item.id > highestID)
+                            highestID = item.id;
+                        //add the audio onto the stack (newest first)
+                        //don't add to the auto play queue if the audio was patched from another channel
+                        if ($('#autoplay').prop('checked') && item.caller.startsWith("Patched from") == false)
+                            audioStack.push("au" + item.id);
+                    });
+                    //pop the audio off the stack into the Queue
+                    while ((a = audioStack.pop()) != null) {
+                        audioQueue.push(a);
+                    }  
+                    $('#recordings tbody tr:first').before(result);
+                    if (audioPlaying == false) {
+                        playAudio();
+                    }
+                    $('#status').text('Connected');
+                    $('#status').removeClass().addClass('good');
+
+                },
+                error: function (xhr) {
+                    //Do Something to handle error
+                    $('#status').text('Not Connected');
+                    $('#status').removeClass().addClass('bad');
+                }
+            });
+            if ($('#autorefresh').prop('checked')) {
+                setTimeout(doRefresh, 3000);
+            }
+            
+        }
+    </script>
+</head>
+<body onload="refreshChanged();">
+    <h1>Crosswire Web Client</h1>
+    <input type="checkbox" id="autorefresh" name="autorefresh" checked onchange="refreshChanged();">
+    <label for="autorefresh">Auto Refresh</label>
+    <input type="checkbox" id="autoplay" name="autoplay" checked>
+    <label for="autoreplay">Auto Play</label>
+    <p style="display:inline">Status:<span id="status">Unknown</span></p>
+    <table id="recordings">
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>Length</th>
+                <th>Caller</th>
+                <th>Channel</th>
+                <th>Recording</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var row in db.Query(selectQueryString))
+            {
+                int i = row.CallHistoryID;
+                if (i > highestID)
+                {
+                    highestID = i;
+                }
+                <tr>
+                    <td>@row.AudioStartTime</td>
+                    <td>@row.Duration</td>
+                    <td>@row.Caller</td>
+                    <td>@row.Name</td>
+                    <td>
+                        <audio controls>
+                            @{ var src = "http://192.168.6.198/recordings" + ((string)row.Filename).Replace("\\", "/"); }
+                            <source src=@src type="audio/wav" />
+                        </audio>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <script>highestID = @highestID;</script>
+</body>
+</html>

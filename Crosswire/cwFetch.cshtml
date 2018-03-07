@@ -1,0 +1,29 @@
+﻿@using System.Configuration;
+@{
+    var db = Database.OpenConnectionString(ConfigurationManager.ConnectionStrings["CrosswireConnection"].ConnectionString, "MySql.Data.MySqlClient");
+    var getLatestQuery = "SELECT CallHistoryID FROM callhistory ORDER BY CallHistoryID DESC LIMIT 1;";
+    var selectQueryString = "SELECT ch.CallHistoryID, ch.AudioStartTime, ar.Duration, ch.Caller, iface.Name, ar.Filename FROM callhistory ch JOIN audiorecording ar ON ch.AudioRecordingID = ar.audioRecordingID JOIN interface iface ON ch.InterfaceID=iface.interfaceID where ch.callHistoryID > @0 ORDER BY ch.DT DESC LIMIT 100;";
+    var sqlresult = db.QueryValue(getLatestQuery);
+    if (sqlresult <= int.Parse(Request["fromID"]))
+    {
+        Json.Write("", Response.Output);
+        Response.ContentType = "application/json";
+    }
+    else
+    {
+        var sqlresult2 = db.Query(selectQueryString, Request["fromID"]);
+
+        var data = sqlresult2.Select(x => new
+        {
+            id = x.CallHistoryID,
+            time = ((DateTime)x.AudioStartTime).ToString(),
+            length = x.Duration,
+            caller = x.Caller,
+            channel = x.Name,
+            file = "/recordings" + ((string)x.Filename).Replace("\\", "/")
+        }).ToArray();
+
+        Json.Write(data, Response.Output);
+        Response.ContentType = "application/json";
+    }
+}
