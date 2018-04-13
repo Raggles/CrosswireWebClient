@@ -1,0 +1,21 @@
+﻿@using System.Configuration;
+@using WebMatrix.Data;
+@using System.Text.RegularExpressions;
+
+@{
+    var db = Database.OpenConnectionString(ConfigurationManager.ConnectionStrings["CrosswireConnection"].ConnectionString, "MySql.Data.MySqlClient");
+    var query = "SELECT DisplayName, Callsign, TerminalDesc FROM terminal where IsDeleted = 0;";
+
+    var sqlresult = db.Query(query);
+    Regex r = new Regex(@"(?<=#)\d+");
+
+    var data = sqlresult.Select(x => new
+    {
+        name = x.DisplayName,
+        callsign = x.Callsign,
+        employeeNumber = r.Match((string)x.TerminalDesc).Value
+    }).ToArray();
+
+    Json.Write(data, Response.Output);
+    Response.ContentType = "application/json";
+}

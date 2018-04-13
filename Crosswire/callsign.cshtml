@@ -1,0 +1,72 @@
+﻿@using System.Configuration;
+@using WebMatrix.Data;
+@using System.Text.RegularExpressions;
+
+@{
+    int numCols = 4;
+    int.TryParse(Request["cols"], out numCols);
+    
+    if (numCols > 5 || numCols < 1)
+    {
+        numCols = 4;
+    }
+
+
+
+    var db = Database.OpenConnectionString(ConfigurationManager.ConnectionStrings["CrosswireConnection"].ConnectionString, "MySql.Data.MySqlClient");
+    var query = "SELECT DisplayName, Callsign, TerminalDesc FROM terminal where IsDeleted = 0;";
+
+    var sqlresult = db.Query(query);
+    Regex r = new Regex(@"(?<=#)\d+");
+
+    var data = sqlresult.Select(x => new Employee()
+    {
+        Name = x.DisplayName,
+        Callsign = int.TryParse((string)x.Callsign, out int y) ? int.Parse((string)x.CallSign) : -1,
+        EmployeeNumber = r.Match((string)x.TerminalDesc).Value
+    }).ToArray();
+
+    Employee[] employees = new Employee[500];
+
+    for (int i = 1; i < 500; i++)
+    {
+        var e = (from j in data where j.Callsign == i select j).FirstOrDefault();
+        if (e != null)
+        {
+            employees[i] = e;
+        }
+    }
+    <style>
+        table {
+                border-collapse: collapse;
+            }
+
+            table, th, td {
+                border: 1px solid black;
+            }
+#layout {
+            column-count: @numCols;
+        }
+    </style>
+    <div id="layout">
+        <table id="recordings">
+            <thead>
+                <tr>
+                    <th>Callsign</th>
+                    <th>Name</th>
+                    <th>Employee Number</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (int i = 0; i < 250; i++)
+            {
+                <tr>
+                    <td>@i</td>
+                    <td>@(employees[i]?.Name)</td>
+                    <td>@(employees[i]?.EmployeeNumber)</td>
+                </tr>
+        }
+            </tbody>
+        </table>
+    </div>
+}

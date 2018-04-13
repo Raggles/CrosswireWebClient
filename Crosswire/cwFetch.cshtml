@@ -1,4 +1,5 @@
 ﻿@using System.Configuration;
+@using WebMatrix.Data;
 @{
     var db = Database.OpenConnectionString(ConfigurationManager.ConnectionStrings["CrosswireConnection"].ConnectionString, "MySql.Data.MySqlClient");
     var getLatestQuery = "SELECT CallHistoryID FROM callhistory ORDER BY CallHistoryID DESC LIMIT 1;";

@@ -1,4 +1,5 @@
 @using System.Configuration;
+@using WebMatrix.Data;
 @{
     var db = Database.OpenConnectionString(ConfigurationManager.ConnectionStrings["CrosswireConnection"].ConnectionString, "MySql.Data.MySqlClient");
     var selectQueryString = "SELECT ch.CallHistoryID, ch.AudioStartTime, ar.Duration, ch.Caller, iface.Name, ar.Filename FROM callhistory ch JOIN audiorecording ar ON ch.AudioRecordingID = ar.audioRecordingID JOIN interface iface ON ch.InterfaceID=iface.interfaceID ORDER BY ch.DT DESC LIMIT 100;";
@@ -12,30 +13,33 @@
         * {
             font-family: Verdana;
         }
+
         table, th, td {
             border: solid 1px #bbbbbb;
             border-collapse: collapse;
             padding: 2px;
         }
+
         tbody tr:nth-of-type(odd) {
-            background-color:#eaf1f7;
+            background-color: #eaf1f7;
         }
+
         h1 {
             font-family: Verdana;
             color: #404142;
         }
+
         .good {
             color: darkgreen;
         }
+
         .bad {
             color: darkred;
         }
+
         thead tr {
             background: lightblue;
         }
-        
-        
-</style>
     </style>
     <script src="~/Scripts/jquery-3.3.1.min.js"></script>
     <script>
@@ -79,7 +83,7 @@
                             $('<td>').text(item.length),
                             $('<td>').text(item.caller),
                             $('<td>').text(item.channel),
-                            $('<td>').append($('<audio>', { id: "au" + item.id, controls:true }).append($('<source>', { src: item.file, type: "audio/wav" })))
+                            $('<td>').append($('<audio>', { id: "au" + item.id, controls: true }).append($('<source>', { src: item.file, type: "audio/wav" })))
                         ))[0].outerHTML;
                         if (item.id > highestID)
                             highestID = item.id;
@@ -91,7 +95,7 @@
                     //pop the audio off the stack into the Queue
                     while ((a = audioStack.pop()) != null) {
                         audioQueue.push(a);
-                    }  
+                    }
                     $('#recordings tbody tr:first').before(result);
                     if (audioPlaying == false) {
                         playAudio();
@@ -109,7 +113,7 @@
             if ($('#autorefresh').prop('checked')) {
                 setTimeout(doRefresh, 3000);
             }
-            
+
         }
     </script>
 </head>
